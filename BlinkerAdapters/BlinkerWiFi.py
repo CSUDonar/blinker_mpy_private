@@ -61,7 +61,7 @@ class BlinkerMQTT(MQTTProtocol):
         else:
             self.isAliAlive = False
             return False
-        
+
     def checkMiotKA(self):
         print("checkMiotKAcheckMiotKAcheckMiotKA",self.isMiotAlive,self.miotKaTime,millis(),BLINKER_MQTT_KEEPALIVE)
         if self.isMiotAlive is False:
@@ -100,7 +100,7 @@ class BlinkerMQTT(MQTTProtocol):
             return True
         BLINKER_ERR_LOG("MQTT NOT ALIVE OR MSG LIMIT")
         return False
-    
+
     def checkAliCanPrint(self):
         if self.checkAliKA() is False:
             BLINKER_ERR_LOG("MQTT NOT ALIVE OR MSG LIMIT")
@@ -111,7 +111,7 @@ class BlinkerMQTT(MQTTProtocol):
         return False
 
     def checkDuerCanPrint(self):
-        
+
         if self.checkDuerKA() is False:
             BLINKER_ERR_LOG("MQTT NOT ALIVE OR MSG LIMIT")
             return False
@@ -188,7 +188,7 @@ class BlinkerMQTT(MQTTProtocol):
         cls().checkAuthData(data)
         # if cls().isDebugAll() is True:
         BLINKER_LOG_ALL('Device Auth Data: ', data)
-        
+
         data = r.json()
         deviceName = data['detail']['deviceName']
         iotId = data['detail']['iotId']
@@ -211,7 +211,7 @@ class BlinkerMQTT(MQTTProtocol):
             bmt.host = BLINKER_MQTT_ALIYUN_HOST
             bmt.port = BLINKER_MQTT_ALIYUN_PORT
         else:
-            bmt.host = data['detail']['host'].replace('mqtts://','').replace('mqtt://','')
+            bmt.host = data['detail']['host'].replace('mqtts://', '').replace('mqtt://', '')
             bmt.port = data['detail']['port']
         bmt.subtopic = '/device/' + deviceName + '/r'
         bmt.pubtopic = '/device/' + deviceName + '/s'
@@ -233,7 +233,7 @@ def on_message(topic, msg):
     BLINKER_LOG_ALL('payload: ', msg)
     data = ujson.loads(msg)
     print("lllll",data)
-  
+
 from machine import Pin
 p2 = Pin(2, Pin.OUT)
 
@@ -255,19 +255,19 @@ class MQTTClients():
         self.auth = auth
         self.aliType = aliType
         self.miType = miType
-        self.duerType = duerType  
+        self.duerType = duerType
 
     def on_message(self, topic, msg):
         BLINKER_LOG_ALL('payload: ', msg)
         data = ujson.loads(msg)
         fromDevice = data['fromDevice']
         data = data['data']
-        
+
         data = ujson.dumps(data)
         BLINKER_LOG_ALL('fromDevice:', fromDevice, ', data: ', data)
-        
-    
-        
+
+
+
         if fromDevice == self.bmqtt.uuid :
             BLINKER_LOG_ALL('from uuid')
             self.bmqtt.msgBuf = data
@@ -281,7 +281,7 @@ class MQTTClients():
             self.bmqtt.isAliRead = True
             self.bmqtt.isAliAlive = True
             self.bmqtt.aliKaTime = millis()
-            
+
         elif fromDevice == 'ServerSender':
             BLINKER_LOG_ALL('from Miot')
             self.bmqtt.msgBuf = data
@@ -289,13 +289,13 @@ class MQTTClients():
             self.bmqtt.isMiotAlive = True
             self.bmqtt.MiotKaTime = millis()
             print("MiotKaTimeMiotKaTime",self.bmqtt.MiotKaTime)
-            
+
         elif fromDevice == 'DuerOS':
             BLINKER_LOG_ALL('from dueros')
             self.bmqtt.msgBuf = data
             self.bmqtt.isDuerRead = True
             self.bmqtt.isDuerAlive = True
-            self.bmqtt.duerKaTime = millis()          
+            self.bmqtt.duerKaTime = millis()
 
     def pub(self, msg, state=False):
         if state is False:
@@ -331,8 +331,8 @@ class MQTTClients():
         BLINKER_LOG_ALL('payload: ', payload)
         self.client.publish(self.bmqtt.pubtopic, payload)
         self.bmqtt.miotPrintTime = millis()
-        
-        
+
+
     def duerPrint(self, msg):
         if self.bmqtt.checkDuerCanPrint() is False:
             return
@@ -424,7 +424,7 @@ class MQTTClients():
         url = '/api/v1/user/device/weather/now?deviceName=' + self.bmqtt.deviceName + '&key=' + self.auth + '&location=' + city
 
         r = requests.get(url=host + url)
-        data = ''       
+        data = ''
 
         self.bmqtt.aqiTime = millis()
 
@@ -439,10 +439,10 @@ class MQTTClients():
         if self.isMQTTinit is False :
             self.bmqtt = self.mProto.getInfo(self.auth, self.aliType,self.miType, self.duerType)
             self.isMQTTinit = True
-            self.client = MQTTClient(client_id = self.bmqtt.clientID, 
-                server = self.bmqtt.host, port = self.bmqtt.port, 
-                user = self.bmqtt.userName, password =self.bmqtt.password, 
-                keepalive = 60, ssl = True)
+            self.client = MQTTClient(client_id = self.bmqtt.clientID,
+                server = self.bmqtt.host, port = self.bmqtt.port,
+                user = self.bmqtt.userName, password =self.bmqtt.password,
+                keepalive = 60, ssl = False)
             self.client.set_callback(self.on_message)
             self.client.connect()
             self.client.subscribe(self.bmqtt.subtopic)
@@ -455,16 +455,19 @@ class MQTTClients():
                 self.client.check_msg()
                 self.mProto.delay100ms()
             except Exception as error:
-                self.client.disconnect()
+                try:
+                    self.client.disconnect()
+                except Exception as e:
+                    print("close connect fail")
                 MQTTClients.reconnect(self)
 
     def reconnect(self):
         try:
             MQTTClients.register(self)
 
-            self.client = MQTTClient(client_id = self.bmqtt.clientID, 
-                server = self.bmqtt.host, port = self.bmqtt.port, 
-                user = self.bmqtt.userName, password =self.bmqtt.password, 
+            self.client = MQTTClient(client_id = self.bmqtt.clientID,
+                server = self.bmqtt.host, port = self.bmqtt.port,
+                user = self.bmqtt.userName, password =self.bmqtt.password,
                 keepalive = 60, ssl = False)
             self.client.set_callback(self.on_message)
             self.client.connect(clean_session = True)
